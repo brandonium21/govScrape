@@ -4,16 +4,25 @@ import urllib2
 import csv
 import requests
 from bs4 import BeautifulSoup
+import csv
+import sys
+from itertools import groupby as g
+import operator
 
 # retrieve form actions on page 
-flags = ['navient', 'violate']
+flags = ['world', 'violate']
 docType= ['8-K', '10-Q', '10-K']
 doc = '8-K'
 flagged = []
 
 currentYear = ''
 # date to stop given in format: YYYY-MM-DD
-stopYear = '2016-09-14'
+stopYear = '2016-09-16'
+
+
+
+def most_common(L):
+  return max(g(sorted(L)), key=lambda(x, v):(len(list(v)),-L.index(x)))[0]
 
 def keepScrape():
 	count = 100
@@ -24,25 +33,39 @@ def keepScrape():
 		
 		soup = BeautifulSoup(response, "html.parser")
 		
-		while any(stopYear in s for s in soup.findAll('td')):
+		while any(stopYear not in s.getText() for s in soup.findAll('td')):
 			response = urllib2.urlopen(iterationSearchString)
 			for link in soup.find_all('a'):
 				if flags[0] in (link.getText().encode('utf8').lower()): 
 					flagged.append((link.getText(),link.get('href')))
+					print 'current date being checked: ' + str(most_common(soup.findAll('td')))
+					print 'Files Flagged : ' + str(len(flagged))
+					print  'Files checked : ' + str(count)
+					save()
+				else:
+					print 'None Found'
+					print 'Files Flagged : ' + str(len(flagged))
+					print  'Files checked : ' + str(count)
 			count += 100
-			return currentYear
+		
+		return currentYear
 	except HTTPError, status:
 		return status
-	return # current Year
 
-def save(): 
-	return #saved as true false if not 
 
-# loop though form action
-while stopYear != currentYear:
-	print flagged
-	currentYear = keepScrape()
+def save():
+	f = open('results.csv', 'wt')
+	try:
+		writer = csv.writer(f)
+		writer.writerow(('Description', 'link'))
+		for titleHref in flagged:
+			writer.writerow(titleHref)
+	finally:
+		f.close()
+	print 'results saved to results.txt'
+	print open('results.csv', 'rt').read()
 
+keepScrape()
 
 # check if string includes the string
 
